@@ -1,34 +1,27 @@
 /**
- * lampa-scroll-fix plugin v1.0.6
+ * lampa-scroll-fix plugin v1.0.7
  * Disables horizontal navigation on vertical mouse wheel scroll
  * Allows proper content scrolling instead of TV-remote-style card switching
  */
 
-Lampa.Plugins.add({
-    name: 'scroll_fix',
-    version: '1.0.6',
-    description: 'Fix mouse wheel scroll for desktop browsers - disable horizontal navigation on vertical scroll',
+(function() {
+    'use strict';
 
-    init() {
-        console.log('[scroll_fix v1.0.6] Plugin initialized');
-        this.setupScrollFix();
-    },
+    try {
+        Lampa.Plugins.add({
+            name: 'scroll_fix',
+            version: '1.0.7',
+            description: 'Fix mouse wheel scroll for desktop browsers - disable horizontal navigation on vertical scroll',
 
-    setupScrollFix() {
-        // Простое логирование скролла
-        window.addEventListener('wheel', (evt) => {
-            const deltaY = Math.abs(evt.deltaY);
-            const deltaX = Math.abs(evt.deltaX);
+            init: function() {
+                console.log('[scroll_fix v1.0.7] Initialized');
+            },
 
-            if (deltaY > deltaX && deltaY > 0) {
-                console.log('[scroll_fix v1.0.6] Vertical scroll detected:', deltaY);
+            onUnload: function() {
+                console.log('[scroll_fix v1.0.7] Unloaded');
             }
-        }, { capture: true, passive: true });
-
-        console.log('[scroll_fix v1.0.6] Setup complete');
-    },
-
-    onUnload() {
-        console.log('[scroll_fix v1.0.6] Plugin unloaded');
+        });
+    } catch (e) {
+        console.error('[scroll_fix] Error:', e);
     }
-});
+})();
