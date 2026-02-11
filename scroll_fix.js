@@ -1,77 +1,62 @@
 /**
- * lampa-scroll-fix plugin
+ * lampa-scroll-fix plugin v1.0.1
  * Disables horizontal navigation on vertical mouse wheel scroll
  * Allows proper content scrolling instead of TV-remote-style card switching
  */
 
 Lampa.Plugins.add({
     name: 'scroll_fix',
-    version: '1.0.0',
+    version: '1.0.1',
     description: 'Fix mouse wheel scroll for desktop browsers - disable horizontal navigation on vertical scroll',
 
     init() {
-        this.handleWheelEvent = this.handleWheelEvent.bind(this);
-        this.setupWheelListener();
+        console.log('[scroll_fix v1.0.1] Plugin initialized');
+
+        // Перехватываем wheel события ДО того, как их обработает Keypad
+        this.originalSend = Lampa.Keypad.listener.send;
+        this.interceptKeypadSend();
+
+        // Также добавляем прямой слушатель для логирования
+        window.addEventListener('wheel', (evt) => {
+            console.log('[scroll_fix] Wheel event:', {
+                deltaY: evt.deltaY,
+                deltaX: evt.deltaX,
+                target: evt.target.className
+            });
+        }, { capture: true });
     },
 
     /**
-     * Setup direct wheel event listener to block horizontal navigation on vertical scroll
+     * Перехватываем вызовы Keypad.listener.send чтобы заблокировать левые/правые команды от скролла
      */
-    setupWheelListener() {
-        window.addEventListener(
-            'wheel',
-            this.handleWheelEvent,
-            { capture: true, passive: false }
-        );
-    },
+    interceptKeypadSend() {
+        const self = this;
+        let wheelEventTime = 0;
 
-    /**
-     * Handle wheel events - prevent horizontal nav on vertical scroll, allow content scrolling
-     */
-    handleWheelEvent(e) {
-        const target = e.target;
-        const scrollable = this.findScrollableParent(target);
+        // Отслеживаем wheel события
+        window.addEventListener('wheel', (e) => {
+            wheelEventTime = Date.now();
+        }, { capture: true, passive: true });
 
-        // If there's scrollable content, scroll it
-        if (scrollable && scrollable !== document.documentElement && scrollable !== document.body) {
-            e.preventDefault();
-            const step = e.deltaY > 0 ? 50 : -50;
-            scrollable.scrollTop += step;
-            return;
-        }
+        // Переопределяем send метод
+        Lampa.Keypad.listener.send = function(name) {
+            const timeSinceWheel = Date.now() - wheelEventTime;
 
-        // Otherwise, block vertical wheel from triggering left/right navigation
-        // Only allow wheel events that would naturally trigger horizontal navigation
-        // (i.e., horizontal scrolling wheels or trackpad gestures)
-        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-            // This is vertical scrolling, prevent it from becoming navigation
-            e.preventDefault();
-        }
-    },
-
-    /**
-     * Find the nearest scrollable parent element
-     */
-    findScrollableParent(el) {
-        let current = el;
-
-        while (current && current !== document.body && current !== document.documentElement) {
-            const style = window.getComputedStyle(current);
-            const overflowY = style.overflowY;
-            const hasScroll = current.scrollHeight > current.clientHeight;
-
-            // Check if element has overflow auto/scroll and actual scrollable content
-            if ((overflowY === 'auto' || overflowY === 'scroll') && hasScroll) {
-                return current;
+            // Если это левая или правая команда в течение 100мс после wheel события - блокируем её
+            if ((name === 'left' || name === 'right') && timeSinceWheel < 100) {
+                console.log('[scroll_fix] Blocked horizontal nav:', name);
+                return;
             }
 
-            current = current.parentElement;
-        }
-
-        return null;
+            return self.originalSend.apply(this, arguments);
+        };
     },
 
     onUnload() {
-        window.removeEventListener('wheel', this.handleWheelEvent, { capture: true });
+        console.log('[scroll_fix] Plugin unloaded');
+        // Восстанавливаем оригинальный send метод
+        if (this.originalSend) {
+            Lampa.Keypad.listener.send = this.originalSend;
+        }
     }
 });
