@@ -34,12 +34,12 @@ Lampa.Plugins.add({
         let wheelEventTime = 0;
 
         // Отслеживаем wheel события
-        window.addEventListener('wheel', (e) => {
+        window.addEventListener('wheel', () => {
             wheelEventTime = Date.now();
         }, { capture: true, passive: true });
 
         // Переопределяем send метод
-        Lampa.Keypad.listener.send = function(name) {
+        Lampa.Keypad.listener.send = function(name, data) {
             const timeSinceWheel = Date.now() - wheelEventTime;
 
             // Если это левая или правая команда в течение 100мс после wheel события - блокируем её
@@ -48,7 +48,7 @@ Lampa.Plugins.add({
                 return;
             }
 
-            return self.originalSend.apply(this, arguments);
+            return self.originalSend.call(this, name, data);
         };
     },
 
