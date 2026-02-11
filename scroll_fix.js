@@ -1,16 +1,16 @@
 /**
- * lampa-scroll-fix plugin v1.0.1
+ * lampa-scroll-fix plugin v1.0.2
  * Disables horizontal navigation on vertical mouse wheel scroll
  * Allows proper content scrolling instead of TV-remote-style card switching
  */
 
 Lampa.Plugins.add({
     name: 'scroll_fix',
-    version: '1.0.1',
+    version: '1.0.2',
     description: 'Fix mouse wheel scroll for desktop browsers - disable horizontal navigation on vertical scroll',
 
     init() {
-        console.log('[scroll_fix v1.0.1] Plugin initialized');
+        console.log('[scroll_fix v1.0.2] Plugin initialized');
 
         // Перехватываем wheel события ДО того, как их обработает Keypad
         this.originalSend = Lampa.Keypad.listener.send;
