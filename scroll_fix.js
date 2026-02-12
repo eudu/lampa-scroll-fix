@@ -1,5 +1,5 @@
 /**
- * lampa-scroll-fix plugin v1.0.29
+ * lampa-scroll-fix plugin v1.0.30
  * Fixes mouse wheel scroll over movie posters
  * Disables horizontal carousel wheel handling - native browser scrolling only
  */
@@ -7,7 +7,7 @@
 (function() {
     'use strict';
 
-    console.log('[scroll_fix v1.0.29] Initialized - blocking wheel propagation on cards');
+    console.log('[scroll_fix v1.0.30] Initialized - redirecting wheel to main scroll');
 
     // Сразу ищем существующие элементы
     setTimeout(() => {
@@ -56,22 +56,52 @@
 
         console.log('[scroll_fix] Attaching wheel blocker to horizontal scroll');
 
-        // Добавляем listener на CAPTURE фазе - он сработает ДО Lampa's handlers
-        // stopImmediatePropagation() заблокирует другие listeners на ТОМ ЖЕ элементе
+        // Добавляем listener на CAPTURE фазе
         scrollElement.addEventListener('wheel', function(e) {
-            console.log('[scroll_fix] wheel event on scroll--horizontal, blocking with stopImmediatePropagation');
-            // stopImmediatePropagation() в capture фазе блокирует:
-            // 1. Другие listeners на capture фазе (но мы первые, так что это не важно)
-            // 2. Все handlers на bubbling фазе этого же элемента (это то что нам нужно!)
-            e.stopImmediatePropagation();
-            // Мы не вызываем preventDefault() чтобы позволить браузеру выполнить native scroll
-            console.log('[scroll_fix] immediate propagation blocked');
-        }, true); // true = capture phase, срабатывает раньше bubbling
+            console.log('[scroll_fix] wheel event on scroll--horizontal, redirecting to main scroll');
 
-        // Также переопределяем onWheel чтобы оно не обрабатывало события (на случай если какой-то код вызовет его напрямую)
+            // Блокируем горизонтальный скролл
+            e.stopImmediatePropagation();
+            e.preventDefault();
+
+            // Ищем главный scroll элемент (выше по иерархии)
+            let mainScroll = findMainScroll(scrollElement);
+
+            if (mainScroll) {
+                console.log('[scroll_fix] found main scroll, dispatching wheel event');
+                // Создаём новое wheel событие с теми же параметрами
+                let wheelEvent = new WheelEvent('wheel', {
+                    deltaY: e.deltaY,
+                    deltaX: e.deltaX,
+                    deltaZ: e.deltaZ,
+                    deltaMode: e.deltaMode,
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+
+                // Отправляем событие на main scroll
+                mainScroll.dispatchEvent(wheelEvent);
+            }
+        }, true); // true = capture phase
+
+        // Отключаем onWheel callback
         scrollElement.Scroll.onWheel = null;
 
         console.log('[scroll_fix] Wheel blocker attached successfully');
+    }
+
+    function findMainScroll(element) {
+        // Ищем элемент с классом scroll который НЕ horizontal
+        let current = element.parentElement;
+        while (current) {
+            if (current.classList?.contains('scroll') && !current.classList?.contains('scroll--horizontal')) {
+                console.log('[scroll_fix] found main scroll element');
+                return current;
+            }
+            current = current.parentElement;
+        }
+        return null;
     }
 
     // Register plugin with Lampa to pass validation
