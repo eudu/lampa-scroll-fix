@@ -1,22 +1,20 @@
 /**
- * lampa-scroll-fix plugin v1.0.21
- * Allows vertical mouse wheel scroll on movie posters/cards
- * Blocks horizontal scroll jumps between items
+ * lampa-scroll-fix plugin v1.0.22
+ * Fixes mouse wheel scroll over movie posters
+ * Prevents horizontal carousel navigation when scrolling vertically
  */
 
 (function() {
     'use strict';
 
-    console.log('[scroll_fix v1.0.21] Initialized');
+    console.log('[scroll_fix v1.0.22] Initialized');
 
     function isMoviePosterArea(el) {
-        // Проверяем, находимся ли мы над обложкой фильма или его контейнером
         let current = el;
         while (current && current !== document.body) {
             const classList = current.classList || {};
             const tagName = current.tagName || '';
 
-            // Ищем карточку/постер/элемент в сетке
             if (classList.contains('card') ||
                 classList.contains('poster') ||
                 classList.contains('item') ||
@@ -31,76 +29,52 @@
         return false;
     }
 
-    // Перехватываем wheel события над горизонтальными скроллами
-    // и заменяем их на вертикальную прокрутку или навигацию
-    const wheelBlocker = new MutationObserver(function(mutations) {
+    // Перехватываем создание Scroll элементов и модифицируем их wheel обработчики
+    const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
             Array.from(mutation.addedNodes).forEach(function(node) {
                 if (node.nodeType !== 1) return;
 
-                const horizontalScrolls = [];
+                // Ищем горизонтальные скроллы
+                const scrolls = [];
                 if (node.classList && node.classList.contains('scroll--horizontal')) {
-                    horizontalScrolls.push(node);
+                    scrolls.push(node);
                 }
                 if (node.querySelectorAll) {
-                    horizontalScrolls.push(...node.querySelectorAll('.scroll--horizontal'));
+                    scrolls.push(...node.querySelectorAll('.scroll--horizontal'));
                 }
 
-                horizontalScrolls.forEach(function(scroll) {
-                    console.log('[scroll_fix] Found horizontal scroll, patching wheel handler');
-
-                    scroll.addEventListener('wheel', handleScrollWheel, { capture: true, passive: false });
-                });
+                scrolls.forEach(disableWheelOnPosters);
             });
         });
     });
 
-    wheelBlocker.observe(document.body, {
+    observer.observe(document.body, {
         childList: true,
         subtree: true
     });
 
-    // Обрабатываем wheel на существующих скроллах
-    document.querySelectorAll('.scroll--horizontal').forEach(function(scroll) {
-        scroll.addEventListener('wheel', handleScrollWheel, { capture: true, passive: false });
-    });
+    // Обработка существующих скроллов
+    document.querySelectorAll('.scroll--horizontal').forEach(disableWheelOnPosters);
 
-    // Главная функция обработки wheel событий
-    function handleScrollWheel(evt) {
-        // Только над обложками
-        if (!isMoviePosterArea(evt.target)) {
-            return;
-        }
+    function disableWheelOnPosters(scrollElement) {
+        console.log('[scroll_fix] Patching horizontal scroll wheel handler');
 
-        const deltaY = evt.deltaY;
-        const deltaX = evt.deltaX;
+        // Оборачиваем mousewheel и wheel события с нашей логикой
+        const wheelHandler = function(evt) {
+            // Если это вертикальный скролл над обложкой - игнорируем событие
+            if (isMoviePosterArea(evt.target)) {
+                console.log('[scroll_fix] Blocking wheel over poster in horizontal scroll');
+                evt.preventDefault();
+                evt.stopImmediatePropagation();
+                return;
+            }
+            // В других местах - пускаем через (Lampa обработает)
+        };
 
-        // Вертикальный скролл над обложкой
-        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 0) {
-            console.log('[scroll_fix] Vertical wheel over poster, skipping Lampa handler');
-
-            evt.preventDefault();
-            evt.stopPropagation();
-            evt.stopImmediatePropagation();
-
-            // Отправляем событие keydown для Lampa (вверх или вниз)
-            const keyCode = deltaY > 0 ? 40 : 38; // Down : Up
-            const keyEvent = new KeyboardEvent('keydown', {
-                keyCode: keyCode,
-                code: keyCode === 40 ? 'ArrowDown' : 'ArrowUp',
-                key: keyCode === 40 ? 'ArrowDown' : 'ArrowUp',
-                bubbles: true,
-                cancelable: true
-            });
-            document.dispatchEvent(keyEvent);
-        }
-        // Горизонтальный скролл просто блокируем
-        else if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 0) {
-            console.log('[scroll_fix] Horizontal wheel over poster, blocking');
-            evt.preventDefault();
-            evt.stopPropagation();
-            evt.stopImmediatePropagation();
-        }
+        // Добавляем на capture фазе ДО того как Lampa слушает (тогда stopImmediatePropagation сработает)
+        scrollElement.addEventListener('wheel', wheelHandler, { capture: true, passive: false });
+        scrollElement.addEventListener('mousewheel', wheelHandler, { capture: true, passive: false });
     }
 
     // Register plugin with Lampa to pass validation
