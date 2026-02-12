@@ -1,5 +1,5 @@
 /**
- * lampa-scroll-fix plugin v1.0.15
+ * lampa-scroll-fix plugin v1.0.17
  * Allows vertical mouse wheel scroll on movie posters/cards
  * Blocks horizontal scroll jumps between items
  */
@@ -7,7 +7,7 @@
 (function() {
     'use strict';
 
-    console.log('[scroll_fix v1.0.15] Initialized');
+    console.log('[scroll_fix v1.0.17] Initialized');
 
     function isMoviePosterArea(el) {
         // Проверяем, находимся ли мы над обложкой фильма или его контейнером
@@ -31,23 +31,39 @@
         return false;
     }
 
-    // Блокируем горизонтальный скролл над обложками
-    // Вертикальный скролл пропускаем - пускай Lampa сам обрабатывает
+    // Блокируем wheel события над обложками и имитируем клавиши
+    // Это предотвращает преобразование вертикального скролла в горизонтальную навигацию
     window.addEventListener('wheel', function(evt) {
-        if (!isMoviePosterArea(evt.target)) {
+        const target = evt.target;
+        if (!isMoviePosterArea(target)) {
             return;
         }
 
-        const deltaY = Math.abs(evt.deltaY);
-        const deltaX = Math.abs(evt.deltaX);
+        const deltaY = evt.deltaY;
+        const deltaX = evt.deltaX;
 
-        // Если это явно горизонтальный скролл (deltaX больше deltaY)
-        // Блокируем его чтобы не переключаться между карточками
-        if (deltaX > deltaY && deltaX > 0) {
-            console.log('[scroll_fix] Blocking horizontal scroll over poster (deltaX=' + Math.round(deltaX) + ')');
+        // Над обложкой: всегда блокируем wheel событие
+        if (Math.abs(deltaY) > 0 || Math.abs(deltaX) > 0) {
             evt.preventDefault();
+            evt.stopPropagation();
+
+            // Если это вертикальное движение - имитируем клавиши вверх/вниз
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                const isDown = deltaY > 0;
+                console.log('[scroll_fix] Simulating ' + (isDown ? 'Down' : 'Up') + ' key (deltaY=' + Math.round(deltaY) + ')');
+
+                // Отправляем KeyboardEvent для вертикальной навигации
+                const keyEvent = new KeyboardEvent('keydown', {
+                    keyCode: isDown ? 40 : 38,
+                    code: isDown ? 'ArrowDown' : 'ArrowUp',
+                    key: isDown ? 'ArrowDown' : 'ArrowUp',
+                    bubbles: true,
+                    cancelable: true
+                });
+                document.dispatchEvent(keyEvent);
+            }
+            // Горизонтальный скролл просто блокируем
         }
-        // Вертикальный скролл (deltaY > deltaX) - пускаем через, Lampa обработает как навигацию
     }, { capture: true, passive: false });
 
     // Register plugin with Lampa to pass validation
