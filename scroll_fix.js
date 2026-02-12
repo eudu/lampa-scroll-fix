@@ -32,11 +32,16 @@
 
     function disableWheelOnHorizontalScroll(scrollElement) {
         // Ищем присвоенный Lampa Scroll объект
+        console.log('[scroll_fix] Found scroll--horizontal element, checking for Scroll object...');
+
         if (!scrollElement.Scroll) {
+            console.log('[scroll_fix] WARNING: scrollElement.Scroll not found, trying alternative methods...');
+            console.log('[scroll_fix] Element properties:', Object.keys(scrollElement).slice(0, 20));
             return; // Scroll объект ещё не присвоен
         }
 
         let scrollObj = scrollElement.Scroll;
+        console.log('[scroll_fix] Found Scroll object, methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(scrollObj)).slice(0, 10));
 
         // Полностью отключаем wheel обработку на горизонтальном scrolle
         // Устанавливаем onWheel в null/undefined
@@ -49,10 +54,10 @@
         // Переопределяем wheel метод на пустую функцию
         scrollObj.wheel = function(size) {
             // Не делаем ничего - полностью отключаем wheel обработку
-            console.log('[scroll_fix] Wheel disabled on horizontal scroll, size=', size);
+            console.log('[scroll_fix] wheel() called but disabled, size=', size);
         };
 
-        console.log('[scroll_fix] Disabled wheel on horizontal scroll');
+        console.log('[scroll_fix] Successfully disabled wheel on horizontal scroll');
     }
 
     // Register plugin with Lampa to pass validation
