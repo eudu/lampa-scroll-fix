@@ -1,13 +1,13 @@
 /**
- * lampa-scroll-fix plugin v1.0.26
+ * lampa-scroll-fix plugin v1.0.27
  * Fixes mouse wheel scroll over movie posters
- * Prevents horizontal carousel navigation when scrolling vertically
+ * Disables horizontal carousel wheel handling - native browser scrolling only
  */
 
 (function() {
     'use strict';
 
-    console.log('[scroll_fix v1.0.26] Initialized');
+    console.log('[scroll_fix v1.0.27] Initialized');
 
     // Отслеживаем создание новых Scroll элементов в Line компонентах
     // Line присваивает onWheel callback в create() методе (line/base.js:36)
@@ -18,7 +18,7 @@
                     // Нашли новый горизонтальный скролл (скорее всего из Line компонента)
                     // Проверяем через setTimeout, чтобы Lampa успел присвоить Scroll объект
                     setTimeout(() => {
-                        blockLineScrollWheel(node);
+                        disableWheelOnHorizontalScroll(node);
                     }, 0);
                 }
             });
@@ -30,7 +30,7 @@
         subtree: true
     });
 
-    function blockLineScrollWheel(scrollElement) {
+    function disableWheelOnHorizontalScroll(scrollElement) {
         // Ищем присвоенный Lampa Scroll объект
         if (!scrollElement.Scroll) {
             return; // Scroll объект ещё не присвоен
@@ -38,14 +38,21 @@
 
         let scrollObj = scrollElement.Scroll;
 
-        // Заменяем onWheel на функцию, которая ничего не делает
-        // Это блокирует вызов Line.wheel() при wheel событиях
-        scrollObj.onWheel = function(step) {
-            // Не делаем ничего - просто блокируем вызов Line.wheel()
-            console.log('[scroll_fix] Blocked onWheel, step=', step);
+        // Полностью отключаем wheel обработку на горизонтальном scrolle
+        // Устанавливаем onWheel в null/undefined
+        // Это заставит Scroll.wheel() вызвать вместо onWheel сам scroll.wheel(size)
+        // Но мы переопределим и сам wheel метод, чтобы он ничего не делал
+
+        // Отключаем onWheel callback
+        scrollObj.onWheel = null;
+
+        // Переопределяем wheel метод на пустую функцию
+        scrollObj.wheel = function(size) {
+            // Не делаем ничего - полностью отключаем wheel обработку
+            console.log('[scroll_fix] Wheel disabled on horizontal scroll, size=', size);
         };
 
-        console.log('[scroll_fix] Installed wheel blocker on horizontal scroll');
+        console.log('[scroll_fix] Disabled wheel on horizontal scroll');
     }
 
     // Register plugin with Lampa to pass validation
