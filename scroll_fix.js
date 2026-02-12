@@ -57,18 +57,18 @@
         console.log('[scroll_fix] Attaching wheel blocker to horizontal scroll');
 
         // Добавляем listener на CAPTURE фазе - он сработает ДО Lampa's handlers
-        // stopPropagation() предотвратит дальнейшее распространение события
+        // stopImmediatePropagation() заблокирует другие listeners на ТОМ ЖЕ элементе
         scrollElement.addEventListener('wheel', function(e) {
-            console.log('[scroll_fix] wheel event on scroll--horizontal, blocking propagation');
-            // stopPropagation() предотвращает распространение события на родителей
-            // Это значит Main scroll не получит это событие
-            e.stopPropagation();
-            // preventDefault() говорит браузеру не делать default действие (не скроллить страницу)
-            // Но мы ХОТИМ чтобы браузер скроллил, поэтому НЕ вызываем preventDefault()
-            console.log('[scroll_fix] propagation blocked');
+            console.log('[scroll_fix] wheel event on scroll--horizontal, blocking with stopImmediatePropagation');
+            // stopImmediatePropagation() в capture фазе блокирует:
+            // 1. Другие listeners на capture фазе (но мы первые, так что это не важно)
+            // 2. Все handlers на bubbling фазе этого же элемента (это то что нам нужно!)
+            e.stopImmediatePropagation();
+            // Мы не вызываем preventDefault() чтобы позволить браузеру выполнить native scroll
+            console.log('[scroll_fix] immediate propagation blocked');
         }, true); // true = capture phase, срабатывает раньше bubbling
 
-        // Также переопределяем onWheel чтобы оно не обрабатывало события
+        // Также переопределяем onWheel чтобы оно не обрабатывало события (на случай если какой-то код вызовет его напрямую)
         scrollElement.Scroll.onWheel = null;
 
         console.log('[scroll_fix] Wheel blocker attached successfully');
