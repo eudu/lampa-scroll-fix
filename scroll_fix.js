@@ -1,5 +1,5 @@
 /**
- * lampa-scroll-fix plugin v1.0.28
+ * lampa-scroll-fix plugin v1.0.29
  * Fixes mouse wheel scroll over movie posters
  * Disables horizontal carousel wheel handling - native browser scrolling only
  */
@@ -7,46 +7,35 @@
 (function() {
     'use strict';
 
-    console.log('[scroll_fix v1.0.28] Initialized');
-    console.log('[scroll_fix] Waiting for .scroll--horizontal elements...');
+    console.log('[scroll_fix v1.0.29] Initialized - blocking wheel propagation on cards');
 
     // Сразу ищем существующие элементы
     setTimeout(() => {
-        console.log('[scroll_fix] Looking for existing .scroll--horizontal elements...');
         let existing = document.querySelectorAll('.scroll--horizontal');
         console.log('[scroll_fix] Found existing elements:', existing.length);
         existing.forEach(el => {
-            console.log('[scroll_fix] Processing existing element:', el);
-            disableWheelOnHorizontalScroll(el);
+            attachWheelBlocker(el);
         });
     }, 100);
 
     // Отслеживаем создание новых Scroll элементов в Line компонентах
     let observer = new MutationObserver((mutations) => {
-        console.log('[scroll_fix] MutationObserver fired, mutations:', mutations.length);
-
         mutations.forEach((mutation) => {
-            console.log('[scroll_fix] Mutation type:', mutation.type, 'added nodes:', mutation.addedNodes.length);
-
             mutation.addedNodes.forEach((node) => {
-                console.log('[scroll_fix] Added node:', node.nodeName, 'hasClass:', node.classList?.contains('scroll--horizontal'));
-
                 if (node.nodeType === 1) {
                     // Проверяем сам элемент
                     if (node.classList?.contains('scroll--horizontal')) {
-                        console.log('[scroll_fix] Found .scroll--horizontal directly');
                         setTimeout(() => {
-                            disableWheelOnHorizontalScroll(node);
+                            attachWheelBlocker(node);
                         }, 0);
                     }
 
                     // Проверяем потомков
                     let descendants = node.querySelectorAll?.('.scroll--horizontal') || [];
                     if (descendants.length > 0) {
-                        console.log('[scroll_fix] Found', descendants.length, '.scroll--horizontal descendants');
                         descendants.forEach(el => {
                             setTimeout(() => {
-                                disableWheelOnHorizontalScroll(el);
+                                attachWheelBlocker(el);
                             }, 0);
                         });
                     }
@@ -60,47 +49,29 @@
         subtree: true
     });
 
-    function disableWheelOnHorizontalScroll(scrollElement) {
-        console.log('[scroll_fix] Processing scroll--horizontal element');
-        console.log('[scroll_fix] Element:', scrollElement);
-        console.log('[scroll_fix] All properties on element:', Object.keys(scrollElement).filter(k => !k.startsWith('__')));
-
+    function attachWheelBlocker(scrollElement) {
         if (!scrollElement.Scroll) {
-            console.log('[scroll_fix] WARNING: scrollElement.Scroll not found');
-            console.log('[scroll_fix] Checking for alternative property names...');
-
-            // Ищем любой объект со свойством wheel или onWheel
-            for (let key in scrollElement) {
-                if (scrollElement[key] && typeof scrollElement[key] === 'object') {
-                    if (scrollElement[key].wheel || scrollElement[key].onWheel) {
-                        console.log('[scroll_fix] Found object with wheel/onWheel at key:', key);
-                        console.log('[scroll_fix] Object:', scrollElement[key]);
-                    }
-                }
-            }
             return;
         }
 
-        let scrollObj = scrollElement.Scroll;
-        console.log('[scroll_fix] Found Scroll object');
-        console.log('[scroll_fix] Scroll object keys:', Object.keys(scrollObj));
-        console.log('[scroll_fix] Scroll object proto:', Object.getOwnPropertyNames(Object.getPrototypeOf(scrollObj)));
+        console.log('[scroll_fix] Attaching wheel blocker to horizontal scroll');
 
-        // Отключаем onWheel callback
-        if (scrollObj.onWheel) {
-            console.log('[scroll_fix] Found onWheel, disabling it');
-            scrollObj.onWheel = null;
-        }
+        // Добавляем listener на CAPTURE фазе - он сработает ДО Lampa's handlers
+        // stopPropagation() предотвратит дальнейшее распространение события
+        scrollElement.addEventListener('wheel', function(e) {
+            console.log('[scroll_fix] wheel event on scroll--horizontal, blocking propagation');
+            // stopPropagation() предотвращает распространение события на родителей
+            // Это значит Main scroll не получит это событие
+            e.stopPropagation();
+            // preventDefault() говорит браузеру не делать default действие (не скроллить страницу)
+            // Но мы ХОТИМ чтобы браузер скроллил, поэтому НЕ вызываем preventDefault()
+            console.log('[scroll_fix] propagation blocked');
+        }, true); // true = capture phase, срабатывает раньше bubbling
 
-        // Переопределяем wheel метод на пустую функцию
-        if (scrollObj.wheel) {
-            console.log('[scroll_fix] Found wheel method, overriding it');
-            scrollObj.wheel = function(size) {
-                console.log('[scroll_fix] wheel() called but disabled, size=', size);
-            };
-        }
+        // Также переопределяем onWheel чтобы оно не обрабатывало события
+        scrollElement.Scroll.onWheel = null;
 
-        console.log('[scroll_fix] Successfully processed horizontal scroll');
+        console.log('[scroll_fix] Wheel blocker attached successfully');
     }
 
     // Register plugin with Lampa to pass validation
