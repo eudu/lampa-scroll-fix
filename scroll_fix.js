@@ -1,27 +1,29 @@
 /**
- * lampa-scroll-fix plugin v1.0.14
- * Disables horizontal navigation on vertical mouse wheel scroll over movie posters
- * Allows proper content scrolling in text areas
+ * lampa-scroll-fix plugin v1.0.15
+ * Allows vertical mouse wheel scroll on movie posters/cards
+ * Blocks horizontal scroll jumps between items
  */
 
 (function() {
     'use strict';
 
-    console.log('[scroll_fix v1.0.14] Initialized');
+    console.log('[scroll_fix v1.0.15] Initialized');
 
     function isMoviePosterArea(el) {
-        // Проверяем, находимся ли мы над обложкой фильма или картинкой
+        // Проверяем, находимся ли мы над обложкой фильма или его контейнером
         let current = el;
         while (current && current !== document.body) {
-            // Ищем картинки, изображения, обложки
-            if (current.tagName === 'IMG' ||
-                current.tagName === 'A' ||
-                current.classList && (
-                    current.classList.contains('card') ||
-                    current.classList.contains('poster') ||
-                    current.classList.contains('item') ||
-                    current.classList.contains('cover')
-                )) {
+            const classList = current.classList || {};
+            const tagName = current.tagName || '';
+
+            // Ищем карточку/постер/элемент в сетке
+            if (classList.contains('card') ||
+                classList.contains('poster') ||
+                classList.contains('item') ||
+                classList.contains('cover') ||
+                classList.contains('element') ||
+                tagName === 'IMG' ||
+                (tagName === 'DIV' && classList.contains('selector'))) {
                 return true;
             }
             current = current.parentElement;
@@ -29,19 +31,34 @@
         return false;
     }
 
-    // Блокируем скролл только над обложками фильмов
+    // Блокируем прокрутку контейнера над обложками
+    // Это предотвращает переключение между карточками при крутении колесика мыши
     window.addEventListener('wheel', function(evt) {
+        if (!isMoviePosterArea(evt.target)) {
+            return;
+        }
+
         const deltaY = evt.deltaY;
         const deltaX = evt.deltaX;
 
-        // Только вертикальный скролл (Y > X)
-        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 0) {
-            // Если курсор над обложкой/картинкой - блокируем скролл
-            if (isMoviePosterArea(evt.target)) {
-                console.log('[scroll_fix] Blocking scroll over poster');
-                evt.preventDefault();
+        // Над обложкой фильма: блокируем ВСЕ события скролла
+        // Это предотвращает как горизонтальное переключение, так и вертикальную прокрутку контейнера
+        if (Math.abs(deltaY) > 0 || Math.abs(deltaX) > 0) {
+            console.log('[scroll_fix] Blocking scroll over poster (deltaY=' + Math.round(deltaY) + ', deltaX=' + Math.round(deltaX) + ')');
+            evt.preventDefault();
+
+            // Если это было вертикальное движение колесика, имитируем нажатие клавиши для навигации
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                // Отправляем событие клавиши вверх или вниз для Lampa
+                const keyCode = deltaY > 0 ? 40 : 38; // 40=Down, 38=Up
+                const keyEvent = new KeyboardEvent('keydown', {
+                    keyCode: keyCode,
+                    key: keyCode === 40 ? 'ArrowDown' : 'ArrowUp',
+                    bubbles: true,
+                    cancelable: true
+                });
+                document.dispatchEvent(keyEvent);
             }
-            // Иначе скролл работает как обычно (скроллит контент или страницу)
         }
     }, { capture: true, passive: false });
 })();
