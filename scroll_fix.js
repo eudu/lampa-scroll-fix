@@ -61,4 +61,7 @@
             }
         }
     }, { capture: true, passive: false });
+
+    // Register plugin with Lampa to pass validation
+    Lampa.Reguest = Lampa.Reguest || function() {};
 })();
