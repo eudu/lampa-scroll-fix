@@ -1,5 +1,5 @@
 /**
- * lampa-scroll-fix plugin v1.0.17
+ * lampa-scroll-fix plugin v1.0.18
  * Allows vertical mouse wheel scroll on movie posters/cards
  * Blocks horizontal scroll jumps between items
  */
@@ -7,7 +7,7 @@
 (function() {
     'use strict';
 
-    console.log('[scroll_fix v1.0.17] Initialized');
+    console.log('[scroll_fix v1.0.18] Initialized');
 
     function isMoviePosterArea(el) {
         // Проверяем, находимся ли мы над обложкой фильма или его контейнером
@@ -31,9 +31,9 @@
         return false;
     }
 
-    // Блокируем wheel события над обложками и имитируем клавиши
-    // Это предотвращает преобразование вертикального скролла в горизонтальную навигацию
-    window.addEventListener('wheel', function(evt) {
+    // Переопределяем обработку wheel событий в горизонтальных скроллах
+    // Когда колесико крутится над обложкой, не нужно переключать карточки
+    document.addEventListener('wheel', function(evt) {
         const target = evt.target;
         if (!isMoviePosterArea(target)) {
             return;
@@ -42,29 +42,33 @@
         const deltaY = evt.deltaY;
         const deltaX = evt.deltaX;
 
-        // Над обложкой: всегда блокируем wheel событие
-        if (Math.abs(deltaY) > 0 || Math.abs(deltaX) > 0) {
-            evt.preventDefault();
-            evt.stopPropagation();
+        // Прерываем распространение wheel события чтобы не достало Lampa
+        evt.stopImmediatePropagation();
+        evt.preventDefault();
 
-            // Если это вертикальное движение - имитируем клавиши вверх/вниз
-            if (Math.abs(deltaY) > Math.abs(deltaX)) {
-                const isDown = deltaY > 0;
-                console.log('[scroll_fix] Simulating ' + (isDown ? 'Down' : 'Up') + ' key (deltaY=' + Math.round(deltaY) + ')');
+        console.log('[scroll_fix] Intercepted wheel (deltaY=' + Math.round(deltaY) + ', deltaX=' + Math.round(deltaX) + ')');
 
-                // Отправляем KeyboardEvent для вертикальной навигации
-                const keyEvent = new KeyboardEvent('keydown', {
-                    keyCode: isDown ? 40 : 38,
-                    code: isDown ? 'ArrowDown' : 'ArrowUp',
-                    key: isDown ? 'ArrowDown' : 'ArrowUp',
-                    bubbles: true,
-                    cancelable: true
-                });
-                document.dispatchEvent(keyEvent);
-            }
-            // Горизонтальный скролл просто блокируем
+        // Если движение явно горизонтальное - игнорируем
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 0) {
+            console.log('[scroll_fix] Blocking horizontal scroll');
+            return;
         }
-    }, { capture: true, passive: false });
+
+        // Если вертикальное движение - имитируем нажатие клавиши
+        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 0) {
+            const isDown = deltaY > 0;
+            console.log('[scroll_fix] Simulating ' + (isDown ? 'Down' : 'Up') + ' key');
+
+            const keyEvent = new KeyboardEvent('keydown', {
+                keyCode: isDown ? 40 : 38,
+                code: isDown ? 'ArrowDown' : 'ArrowUp',
+                key: isDown ? 'ArrowDown' : 'ArrowUp',
+                bubbles: true,
+                cancelable: true
+            });
+            document.dispatchEvent(keyEvent);
+        }
+    }, true);
 
     // Register plugin with Lampa to pass validation
     Lampa.Reguest = Lampa.Reguest || function() {};
